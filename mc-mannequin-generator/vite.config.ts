@@ -14,7 +14,7 @@ export default defineConfig({
     },
 
     manifest: {
-      name: 'mc-mannequin-generator',
+      name: 'MC玩家模型生成工具',
       short_name: 'mc-mnqgrt',
       description: 'Simply generate mannequins in Minecraft.',
       theme_color: '#ffffff',

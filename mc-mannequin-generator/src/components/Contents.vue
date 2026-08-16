@@ -39,41 +39,97 @@ function generateMannequin() {
 </script>
 
 <template>
-  <div class="contents">
+  <div id="contents">
     <h1>Contents</h1>
     <p>Welcome to the mc-mannequin-generator!</p>
 
-    <div class="input-form">
+    <div class="divider"></div>
+
+    <div id="input-form">
+      <h2>Input</h2>
       <div>
-        <label for="player-name">Player Name:</label>
+        <label for="player-name">Player Name</label>
         <input type="text" id="player-name" v-model="playerName" />
       </div>
       <div>
-        <input type="radio" id="mode-realtime" value="Realtime" v-model="profileOrigin" />
-        <label for="mode-realtime">Realtime</label>
-        <input type="radio" id="mode-stored" value="Stored" v-model="profileOrigin" />
-        <label for="mode-stored">Stored</label>
-        <input type="radio" id="mode-url" value="Url" v-model="profileOrigin" />
-        <label for="mode-url">Url</label>
-        <input type="radio" id="mode-pack" value="Pack" v-model="profileOrigin" />
-        <label for="mode-pack">Pack</label>
+        <label>Profile Origin</label>
+        <div>
+          <input type="radio" id="mode-realtime" value="Realtime" v-model="profileOrigin" />
+          <label for="mode-realtime">Realtime</label>
+          <input type="radio" id="mode-stored" value="Stored" v-model="profileOrigin" />
+          <label for="mode-stored">Stored</label>
+          <input type="radio" id="mode-url" value="Url" v-model="profileOrigin" />
+          <label for="mode-url">Url</label>
+          <input type="radio" id="mode-pack" value="Pack" v-model="profileOrigin" />
+          <label for="mode-pack">Pack</label>
+        </div>
       </div>
       <div v-if="profileOrigin === 'Url'">
-        <label for="skin-url">Skin URL:</label>
+        <label for="skin-url">Skin URL</label>
         <input type="text" id="skin-url" v-model="skinUrl" />
-        <label for="cape-url">Cape URL:</label>
+        <label for="cape-url">Cape URL</label>
         <input type="text" id="cape-url" v-model="capeUrl" />
-        <label for="elytra-url">Elytra URL:</label>
+        <label for="elytra-url">Elytra URL</label>
         <input type="text" id="elytra-url" v-model="elytraUrl" />
       </div>
     </div>
 
+    <div class="divider"></div>
+
     <button @click="generateMannequin">Generate Mannequin</button>
 
-    <div class="output">
+    <div class="divider"></div>
+
+    <div id="output-form">
       <h2>Output</h2>
       <p>Check the console for the generated mannequin parameters.</p>
-      <p id="output-profile-json">{{ outputProfileJson }}</p>
+      <textarea id="output-profile-json" rows="12" readonly>{{ outputProfileJson }}</textarea>
     </div>
   </div>
 </template>
+
+<style scoped>
+#contents {
+  margin: 0;
+  padding: 20px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+#input-form > div, #output-form > div {
+  margin: 12px auto;
+}
+
+#input-form textarea, #output-form textarea {
+  width: 100%;
+  max-width: 600px;
+  padding: 8px;
+  box-sizing: border-box;
+  font-size: 16px;
+  white-space: pre;
+}
+
+div.divider {
+  margin: 20px 0;
+  width: 100%;
+  border-bottom: 1px solid #ccc;
+}
+
+input[type="text"] {
+  width: 100%;
+  max-width: 400px;
+  padding: 8px;
+  margin: 5px auto;
+  box-sizing: border-box;
+  font-size: 16px;
+  display: block;
+}
+
+textarea {
+  resize: none;
+}
+</style>
