@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import type GeneratingOptions from '../types/GeneratingOptions'
+import type AshconProfile from '../types/AshconProfile'
 import { constructProfile } from '../utils/ConstructProfile'
 import { objectToNbt } from '../utils/JsonToNbt'
+import { getAshconProfile, getProfileTextures } from '../utils/MojangAPI'
 
 const playerName = ref('Steve')
 const profileOrigin = ref('Realtime')
@@ -12,33 +14,88 @@ const modelType = ref('wide') // Default model type, you can add a selection for
 
 const outputProfileJson = ref('')
 const outputNbtData = ref('')
+const outputTexturesData = ref('')
 const outputSummonMannequin = ref('')
 const outputGiveMannequin = ref('')
 const outputGiveHead = ref('')
 
-function generateMannequin() {
+const errorDialogText = ref('')
+const waitDialogText = ref('')
+
+onMounted(() => {
+  const errorDialog = (document.getElementById('error-dialog') as HTMLDialogElement)
+  errorDialog.addEventListener('close', () => {
+    console.log('Error dialog closed.')
+  })
+})
+
+async function generateMannequin() {
   const options: GeneratingOptions = {
     playerName: playerName.value,
     profileOrigin: profileOrigin.value.toLowerCase() as 'realtime' | 'stored' | 'url' | 'pack',
     modelType: modelType.value as 'wide' | 'slim',
-    skinUrl: skinUrl.value || undefined,
-    capeUrl: capeUrl.value || undefined,
+    skinUrl: skinUrl.value,
+    capeUrl: capeUrl.value,
   }
+
   console.log('Generating mannequin with options:', options)
-  constructProfile(options).then((profile) => {
-    outputProfileJson.value = JSON.stringify(profile, null, 2)
-    outputNbtData.value = objectToNbt(profile)
-    if (options.profileOrigin === 'realtime') {
-      outputNbtData.value = outputNbtData.value.replace(/,name:"[^"]+"/, '') // MC特性：仅同时存在id和name时无法解析档案数据，这里去除name
-    }
-    let entityData = `profile:${outputNbtData.value},CustomName:{text:"${profile.name}",italic:false}`;
-    outputSummonMannequin.value = `summon mannequin ~ ~ ~ {${entityData}}`
-    outputGiveMannequin.value = `give @p allay_spawn_egg[entity_data={id:"mannequin",${entityData}},custom_name={text:"${profile.name}模型",italic:false}]`
-    outputGiveHead.value = `give @p player_head[profile=${outputNbtData.value},custom_name={text:"${profile.name}的头",italic:false}]`
-    console.log('Generated Profile:', profile)
-  }).catch((error) => {
+
+  try {
+    showWaitDialog('正在生成')
+    let ashconProfile = options.profileOrigin === 'realtime' || options.profileOrigin === 'stored' ? await getAshconProfile(options.playerName) : undefined;
+    showOutputs(options, ashconProfile);
+  }
+  catch (error) {
     console.error('Error generating profile:', error)
-  });
+    showErrorDialog(`生成失败：${error instanceof Error ? error.message : String(error)}`)
+  }
+  finally {
+    closeWaitDialog()
+  }
+}
+
+function showOutputs(options: GeneratingOptions, ashconProfile?: AshconProfile) {
+  let profile = constructProfile(options, ashconProfile);
+
+  outputProfileJson.value = JSON.stringify(profile, null, 2)
+  outputNbtData.value = objectToNbt(profile)
+  if (options.profileOrigin === 'realtime') {
+    outputNbtData.value = outputNbtData.value.replace(/,name:"[^"]+"/, '') // MC特性：仅同时存在id和name时无法解析档案数据，这里去除name
+  }
+  if (ashconProfile) {
+    outputTexturesData.value = JSON.stringify(getProfileTextures(ashconProfile), null, 2)
+  }
+  else {
+    outputTexturesData.value = '暂无'
+  }
+
+  let entityData = `profile:${outputNbtData.value},CustomName:{text:"${profile.name}",italic:false}`;
+  outputSummonMannequin.value = `summon mannequin ~ ~ ~ {${entityData}}`
+  outputGiveMannequin.value = `give @p allay_spawn_egg[entity_data={id:"mannequin",${entityData}},custom_name={text:"${profile.name}模型",italic:false}]`
+  outputGiveHead.value = `give @p player_head[profile=${outputNbtData.value},custom_name={text:"${profile.name}的头",italic:false}]`
+  console.log('Generated Profile:', profile)
+}
+
+function showErrorDialog(message: string) {
+  errorDialogText.value = message
+  const errorDialog = (document.getElementById('error-dialog') as HTMLDialogElement)
+  errorDialog.showModal()
+}
+
+function closeErrorDialog() {
+  const errorDialog = (document.getElementById('error-dialog') as HTMLDialogElement)
+  errorDialog.close()
+}
+
+function showWaitDialog(title: string) {
+  waitDialogText.value = title
+  const waitDialog = (document.getElementById('wait-dialog') as HTMLDialogElement)
+  waitDialog.showModal()
+}
+
+function closeWaitDialog() {
+  const waitDialog = (document.getElementById('wait-dialog') as HTMLDialogElement)
+  waitDialog.close()
 }
 </script>
 
@@ -126,8 +183,22 @@ function generateMannequin() {
       <textarea id="output-profile-json" rows="12" readonly>{{ outputProfileJson }}</textarea>
       <label for="output-nbt-data">NBT 数据</label>
       <textarea id="output-nbt-data" rows="2" readonly>{{ outputNbtData }}</textarea>
+      <label for="output-textures-data">材质数据</label>
+      <textarea id="output-textures-data" rows="12" readonly>{{ outputTexturesData }}</textarea>
     </div>
   </div>
+  <dialog id="error-dialog">
+    <div class="dialog-box">
+      <h2>错误</h2>
+      <p>{{ errorDialogText }}</p>
+      <button @click="closeErrorDialog">确定</button>
+    </div>
+  </dialog>
+  <dialog id="wait-dialog">
+    <div class="dialog-box">
+      <h2>{{ waitDialogText }}</h2>
+    </div>
+  </dialog>
 </template>
 
 <style scoped>
@@ -168,6 +239,14 @@ function generateMannequin() {
   margin-bottom: 16px;
 }
 
+#error-dialog h2 {
+  color: red;
+}
+
+#error-dialog p {
+  margin: 16px auto;
+}
+
 div.radio-button-box {
   display: flex;
   flex-wrap: wrap;
@@ -192,6 +271,15 @@ div.divider {
   color: red;
   font-weight: bold;
   font-size: 1em;
+}
+
+.dialog-box {
+  max-width: 400px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 input[type="text"] {

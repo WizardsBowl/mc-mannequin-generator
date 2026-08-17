@@ -1,16 +1,18 @@
 import type MinecraftProfile from "../types/MinecraftProfile";
+import type MinecraftProfileTextures from "../types/MinecraftProfileTextures";
+import type AshconProfile from "../types/AshconProfile";
 import type GeneratingOptions from "../types/GeneratingOptions";
-import { getAshconProfile, getProfileTextures } from "./MojangAPI";
+import { getProfileTextures } from "./MojangAPI";
 import { toNbtIntArray } from "./MinecraftUuidConverter";
 
-export async function constructProfile(options: GeneratingOptions): Promise<MinecraftProfile> {
+export function constructProfile(options: GeneratingOptions, ashconProfile?: AshconProfile): MinecraftProfile {
     switch (options.profileOrigin) {
         case 'realtime':
-            return constructRealtimeProfile(options.playerName);
+            return constructRealtimeProfile(ashconProfile!);
         case 'stored':
-            return constructStoredProfile(options.playerName);
+            return constructStoredProfile(ashconProfile!);
         case 'url':
-            // Implementation for URL-based profiles
+            return constructUrlProfile(options);
             break;
         case 'pack':
             // Implementation for pack-based profiles
@@ -19,8 +21,7 @@ export async function constructProfile(options: GeneratingOptions): Promise<Mine
     throw new Error(`Unsupported profile origin: ${options.profileOrigin}`);
 }
 
-export async function constructRealtimeProfile(username: string): Promise<MinecraftProfile> {
-    const ashconProfile = await getAshconProfile(username);
+export function constructRealtimeProfile(ashconProfile: AshconProfile): MinecraftProfile {
     const profile: MinecraftProfile = {
         id: toNbtIntArray(ashconProfile.uuid),
         name: ashconProfile.username
@@ -28,14 +29,39 @@ export async function constructRealtimeProfile(username: string): Promise<Minecr
     return profile;
 }
 
-export async function constructStoredProfile(username: string): Promise<MinecraftProfile> {
-    const ashconProfile = await getAshconProfile(username);
+export function constructStoredProfile(ashconProfile: AshconProfile): MinecraftProfile {
     const profile: MinecraftProfile = {
         id: toNbtIntArray(ashconProfile.uuid),
         name: ashconProfile.username,
         properties: [{
             name: 'textures',
             value: btoa(JSON.stringify(getProfileTextures(ashconProfile)))
+        }]
+    }
+    return profile;
+}
+
+export function constructUrlProfile(options: GeneratingOptions): MinecraftProfile {
+    const textures: MinecraftProfileTextures = {
+        timestamp: Date.now(),
+        profileName: options.playerName,
+        textures: {
+            SKIN: options.skinUrl ? {
+                url: options.skinUrl || '',
+                metadata: {
+                    model: options.modelType
+                }
+            } : undefined,
+            CAPE: options.capeUrl ? {
+                url: options.capeUrl
+            } : undefined
+        }
+    }
+    const profile: MinecraftProfile = {
+        name: options.playerName,
+        properties: [{
+            name: 'textures',
+            value: btoa(JSON.stringify(textures))
         }]
     }
     return profile;

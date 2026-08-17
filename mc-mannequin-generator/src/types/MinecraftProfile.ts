@@ -5,7 +5,7 @@ export interface Properties {
 }
 
 export default interface MinecraftProfile {
-    id: string;
+    id?: string;
     name: string;
     properties?: Properties[];
     cape?: string;

@@ -17,8 +17,8 @@ export interface Textures {
 }
 
 export default interface MinecraftProfileTextures {
-    timestamp: number;
-    profileId: string;
+    timestamp?: number;
+    profileId?: string;
     profileName: string;
     textures: Textures;
 }
