@@ -4,5 +4,4 @@ export default interface GeneratingOptions {
     modelType: 'wide' | 'slim';
     skinUrl?: string;
     capeUrl?: string;
-    elytraUrl?: string;
 }
