@@ -13,10 +13,8 @@ export function constructProfile(options: GeneratingOptions, ashconProfile?: Ash
             return constructStoredProfile(ashconProfile!);
         case 'url':
             return constructUrlProfile(options);
-            break;
         case 'pack':
-            // Implementation for pack-based profiles
-            break;
+            return constructPackProfile(options);
     }
     throw new Error(`Unsupported profile origin: ${options.profileOrigin}`);
 }
@@ -63,6 +61,16 @@ export function constructUrlProfile(options: GeneratingOptions): MinecraftProfil
             name: 'textures',
             value: btoa(JSON.stringify(textures))
         }]
+    }
+    return profile;
+}
+
+export function constructPackProfile(options: GeneratingOptions): MinecraftProfile {
+    const profile: MinecraftProfile = {
+        name: options.playerName,
+        model: options.modelType,
+        texture: options.skinFile ? `mc_mnqgrt:player/${options.playerName}/skin` : undefined,
+        cape: options.capeFile ? `mc_mnqgrt:player/${options.playerName}/cape` : undefined
     }
     return profile;
 }

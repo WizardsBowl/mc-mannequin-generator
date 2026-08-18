@@ -19,7 +19,7 @@ export default defineConfig({
     manifest: {
       name: 'MC玩家模型生成工具',
       short_name: 'mc-mnqgrt',
-      description: 'v0.9 - Simply generate mannequins in Minecraft.',
+      description: '一个 PWA 应用，帮助你在 MC 中生成具有特定皮肤的 玩家模型 / 玩家头颅。',
       theme_color: '#ffffff',
     },
 

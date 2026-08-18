@@ -4,4 +4,6 @@ export default interface GeneratingOptions {
     modelType: 'wide' | 'slim';
     skinUrl?: string;
     capeUrl?: string;
+    skinFile?: File | null;
+    capeFile?: File | null;
 }

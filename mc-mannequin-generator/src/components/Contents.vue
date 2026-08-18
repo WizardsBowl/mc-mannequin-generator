@@ -2,15 +2,18 @@
 import { onMounted, ref } from 'vue'
 import type GeneratingOptions from '../types/GeneratingOptions'
 import type AshconProfile from '../types/AshconProfile'
-import { constructProfile } from '../utils/ConstructProfile'
+import { constructProfile } from '../utils/ProfileConstructor'
 import { objectToNbt } from '../utils/JsonToNbt'
 import { getAshconProfile, getProfileTextures } from '../utils/MojangAPI'
+import { generateResourcePack } from '../utils/ResourcePackGenerator'
 
 const playerName = ref('Steve')
 const profileOrigin = ref('Realtime')
 const skinUrl = ref('')
 const capeUrl = ref('')
 const modelType = ref('wide') // Default model type, you can add a selection for this if needed
+const skinFile = ref<File | null>(null)
+const capeFile = ref<File | null>(null)
 
 const outputProfileJson = ref('')
 const outputNbtData = ref('')
@@ -23,27 +26,31 @@ const errorDialogText = ref('')
 const waitDialogText = ref('')
 
 onMounted(() => {
-  const errorDialog = (document.getElementById('error-dialog') as HTMLDialogElement)
-  errorDialog.addEventListener('close', () => {
-    console.log('Error dialog closed.')
-  })
+  console.log('Contents component mounted.')
 })
 
 async function generateMannequin() {
+  if (!playerName.value) {
+    showErrorDialog('玩家名称不能为空')
+    return
+  }
+
   const options: GeneratingOptions = {
     playerName: playerName.value,
     profileOrigin: profileOrigin.value.toLowerCase() as 'realtime' | 'stored' | 'url' | 'pack',
     modelType: modelType.value as 'wide' | 'slim',
     skinUrl: skinUrl.value,
     capeUrl: capeUrl.value,
+    skinFile: skinFile.value,
+    capeFile: capeFile.value,
   }
 
   console.log('Generating mannequin with options:', options)
 
   try {
     showWaitDialog('正在生成')
-    let ashconProfile = options.profileOrigin === 'realtime' || options.profileOrigin === 'stored' ? await getAshconProfile(options.playerName) : undefined;
-    showOutputs(options, ashconProfile);
+    const ashconProfile = options.profileOrigin === 'realtime' || options.profileOrigin === 'stored' ? await getAshconProfile(options.playerName) : undefined;
+    await handleGenerating(options, ashconProfile);
   }
   catch (error) {
     console.error('Error generating profile:', error)
@@ -54,8 +61,8 @@ async function generateMannequin() {
   }
 }
 
-function showOutputs(options: GeneratingOptions, ashconProfile?: AshconProfile) {
-  let profile = constructProfile(options, ashconProfile);
+async function handleGenerating(options: GeneratingOptions, ashconProfile?: AshconProfile) {
+  const profile = constructProfile(options, ashconProfile);
 
   outputProfileJson.value = JSON.stringify(profile, null, 2)
   outputNbtData.value = objectToNbt(profile)
@@ -69,11 +76,22 @@ function showOutputs(options: GeneratingOptions, ashconProfile?: AshconProfile) 
     outputTexturesData.value = '暂无'
   }
 
-  let entityData = `profile:${outputNbtData.value},CustomName:{text:"${profile.name}",italic:false}`;
+  const entityData = `profile:${outputNbtData.value},CustomName:{text:"${profile.name}",italic:false}`;
   outputSummonMannequin.value = `summon mannequin ~ ~ ~ {${entityData}}`
   outputGiveMannequin.value = `give @p allay_spawn_egg[entity_data={id:"mannequin",${entityData}},custom_name={text:"${profile.name}模型",italic:false}]`
   outputGiveHead.value = `give @p player_head[profile=${outputNbtData.value},custom_name={text:"${profile.name}的头",italic:false}]`
   console.log('Generated Profile:', profile)
+
+  if (options.profileOrigin === 'pack') {
+    console.log('Generating resource pack.')
+    const commands: Record<string, string> = {
+      summon: outputSummonMannequin.value,
+      give_mannequin: outputGiveMannequin.value,
+      give_head: outputGiveHead.value
+    };
+    await generateResourcePack(options, profile, commands);
+    console.log('Resource pack generated successfully.')
+  }
 }
 
 function showErrorDialog(message: string) {
@@ -96,6 +114,29 @@ function showWaitDialog(title: string) {
 function closeWaitDialog() {
   const waitDialog = (document.getElementById('wait-dialog') as HTMLDialogElement)
   waitDialog.close()
+}
+
+function handleSkinFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files && target.files.length > 0) {
+    skinFile.value = (target.files[0])!;
+  } else {
+    skinFile.value = null;
+  }
+}
+
+function handleCapeFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files && target.files.length > 0) {
+    capeFile.value = (target.files[0])!;
+  } else {
+    capeFile.value = null;
+  }
+}
+
+function handleWaitDialogCancel(event: Event) {
+  event.preventDefault(); // Prevent the dialog from closing
+  console.log('Wait dialog cancel event triggered, but closing is prevented.');
 }
 </script>
 
@@ -159,6 +200,12 @@ function closeWaitDialog() {
         <label for="cape-url">披风 URL</label>
         <input type="text" id="cape-url" v-model="capeUrl" />
       </div>
+      <div v-if="profileOrigin === 'Pack'">
+        <label for="skin-file">皮肤文件</label>
+        <input type="file" id="skin-file" accept="image/png" @change="handleSkinFileChange" />
+        <label for="cape-file">披风文件</label>
+        <input type="file" id="cape-file" accept="image/png" @change="handleCapeFileChange" />
+      </div>
     </div>
 
     <div class="divider"></div>
@@ -194,7 +241,7 @@ function closeWaitDialog() {
       <button @click="closeErrorDialog">确定</button>
     </div>
   </dialog>
-  <dialog id="wait-dialog">
+  <dialog id="wait-dialog" @cancel="handleWaitDialogCancel">
     <div class="dialog-box">
       <h2>{{ waitDialogText }}</h2>
     </div>
@@ -292,6 +339,11 @@ input[type="text"] {
   display: block;
 }
 
+input[type="file"] {
+  display: block;
+  margin: 5px auto;
+}
+
 textarea {
   resize: none;
   display: block;
@@ -304,5 +356,9 @@ p {
 
 button {
   background-color: #f0f0f0;
+}
+
+dialog {
+  border-radius: 8px;
 }
 </style>
