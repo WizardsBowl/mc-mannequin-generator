@@ -6,7 +6,7 @@ export interface Properties {
 
 export default interface MinecraftProfile {
     id?: string;
-    name: string;
+    name?: string;
     properties?: Properties[];
     cape?: string;
     elytra?: string;

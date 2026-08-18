@@ -21,16 +21,14 @@ export function constructProfile(options: GeneratingOptions, ashconProfile?: Ash
 
 export function constructRealtimeProfile(ashconProfile: AshconProfile): MinecraftProfile {
     const profile: MinecraftProfile = {
-        id: toNbtIntArray(ashconProfile.uuid),
-        name: ashconProfile.username
+        id: toNbtIntArray(ashconProfile.uuid)
+        //name: ashconProfile.username // MC特性：同时仅存在id和name时无法解析档案数据，这里去除name
     }
     return profile;
 }
 
 export function constructStoredProfile(ashconProfile: AshconProfile): MinecraftProfile {
     const profile: MinecraftProfile = {
-        id: toNbtIntArray(ashconProfile.uuid),
-        name: ashconProfile.username,
         properties: [{
             name: 'textures',
             value: btoa(JSON.stringify(getProfileTextures(ashconProfile)))
@@ -56,7 +54,6 @@ export function constructUrlProfile(options: GeneratingOptions): MinecraftProfil
         }
     }
     const profile: MinecraftProfile = {
-        name: options.playerName,
         properties: [{
             name: 'textures',
             value: btoa(JSON.stringify(textures))
@@ -67,10 +64,9 @@ export function constructUrlProfile(options: GeneratingOptions): MinecraftProfil
 
 export function constructPackProfile(options: GeneratingOptions): MinecraftProfile {
     const profile: MinecraftProfile = {
-        name: options.playerName,
         model: options.modelType,
-        texture: options.skinFile ? `mc_mnqgrt:player/${options.playerName}/skin` : undefined,
-        cape: options.capeFile ? `mc_mnqgrt:player/${options.playerName}/cape` : undefined
+        texture: options.skinFile ? `mc_mnqgrt:player/${options.playerName.toLowerCase()}/skin` : undefined,
+        cape: options.capeFile ? `mc_mnqgrt:player/${options.playerName.toLowerCase()}/cape` : undefined
     }
     return profile;
 }

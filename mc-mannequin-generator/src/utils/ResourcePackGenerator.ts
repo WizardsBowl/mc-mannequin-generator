@@ -18,20 +18,20 @@ export async function generateResourcePack(options: GeneratingOptions, profile: 
     const mcmeta: ResourcePackMcmeta = {
         pack: {
             description: `${options.playerName}皮肤包\n由MC玩家模型生成工具生成`,
-            min_format: 69,
-            max_format: 69
+            min_format: options.advancedOptions?.minFormat ?? 69,
+            max_format: options.advancedOptions?.maxFormat ?? 88
         }
     };
     zip.file('pack.mcmeta', JSON.stringify(mcmeta, null, 2));
 
     const packIconBlob = await downloadBlob(packIconUrl);
-    zip.file('pack.png', packIconBlob);
+    zip.file('pack.png', options.advancedOptions?.packIconFile ?? packIconBlob);
 
     if (options.skinFile) {
-        zip.file(`assets/mc_mnqgrt/textures/player/${options.playerName}/skin.png`, options.skinFile);
+        zip.file(`assets/mc_mnqgrt/textures/player/${options.playerName.toLowerCase()}/skin.png`, options.skinFile);
     }
     if (options.capeFile) {
-        zip.file(`assets/mc_mnqgrt/textures/player/${options.playerName}/cape.png`, options.capeFile);
+        zip.file(`assets/mc_mnqgrt/textures/player/${options.playerName.toLowerCase()}/cape.png`, options.capeFile);
     }
 
     const zipBlob = await zip.generateAsync({ type: 'blob' });

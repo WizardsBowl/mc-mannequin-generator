@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type GeneratingOptions from '../types/GeneratingOptions'
+import type { AdvancedGeneratingOptions } from '../types/GeneratingOptions'
 import type AshconProfile from '../types/AshconProfile'
 import { constructProfile } from '../utils/ProfileConstructor'
 import { objectToNbt } from '../utils/JsonToNbt'
@@ -15,12 +16,27 @@ const modelType = ref('wide') // Default model type, you can add a selection for
 const skinFile = ref<File | null>(null)
 const capeFile = ref<File | null>(null)
 
+const enabledAdvancedOptions = ref(false)
+const minFormat = ref(69)
+const maxFormat = ref(88)
+const packIconFile = ref<File | null>(null)
+const description = ref('NPC')
+const hideDescription = ref(false)
+const immovable = ref(false)
+const invulnerable = ref(false)
+const mainHand = ref<'left' | 'right'>('right')
+const pose = ref<'standing' | 'crouching' | 'swimming' | 'fall_flying' | 'sleeping'>('standing')
+
 const outputProfileJson = ref('')
 const outputNbtData = ref('')
 const outputTexturesData = ref('')
 const outputSummonMannequin = ref('')
 const outputGiveMannequin = ref('')
 const outputGiveHead = ref('')
+
+const skinFileName = ref('未选择皮肤文件')
+const capeFileName = ref('未选择披风文件')
+const packIconFileName = ref('未选择资源包图标文件')
 
 const errorDialogText = ref('')
 const waitDialogText = ref('')
@@ -34,6 +50,36 @@ async function generateMannequin() {
     showErrorDialog('玩家名称不能为空')
     return
   }
+  if (profileOrigin.value === 'Url' && !skinUrl.value) {
+    showErrorDialog('皮肤 URL 不能为空')
+    return
+  }
+  if (profileOrigin.value === 'Pack' && !skinFile.value) {
+    showErrorDialog('皮肤文件不能为空')
+    return
+  }
+  if (enabledAdvancedOptions.value) {
+    if (minFormat.value < 69 || maxFormat.value < 69) {
+      showErrorDialog('资源包格式版本不能小于 69')
+      return
+    }
+    if (minFormat.value > maxFormat.value) {
+      showErrorDialog('最小格式版本不能大于最大格式版本')
+      return
+    }
+  }
+
+  const advancedOptions: AdvancedGeneratingOptions = {
+    minFormat: minFormat.value,
+    maxFormat: maxFormat.value,
+    packIconFile: packIconFile.value,
+    description: description.value,
+    hideDescription: hideDescription.value,
+    immovable: immovable.value,
+    invulnerable: invulnerable.value,
+    mainHand: mainHand.value,
+    pose: pose.value,
+  }
 
   const options: GeneratingOptions = {
     playerName: playerName.value,
@@ -43,6 +89,7 @@ async function generateMannequin() {
     capeUrl: capeUrl.value,
     skinFile: skinFile.value,
     capeFile: capeFile.value,
+    advancedOptions: enabledAdvancedOptions.value ? advancedOptions : undefined,
   }
 
   console.log('Generating mannequin with options:', options)
@@ -66,9 +113,6 @@ async function handleGenerating(options: GeneratingOptions, ashconProfile?: Ashc
 
   outputProfileJson.value = JSON.stringify(profile, null, 2)
   outputNbtData.value = objectToNbt(profile)
-  if (options.profileOrigin === 'realtime') {
-    outputNbtData.value = outputNbtData.value.replace(/,name:"[^"]+"/, '') // MC特性：仅同时存在id和name时无法解析档案数据，这里去除name
-  }
   if (ashconProfile) {
     outputTexturesData.value = JSON.stringify(getProfileTextures(ashconProfile), null, 2)
   }
@@ -76,10 +120,19 @@ async function handleGenerating(options: GeneratingOptions, ashconProfile?: Ashc
     outputTexturesData.value = '暂无'
   }
 
-  const entityData = `profile:${outputNbtData.value},CustomName:{text:"${profile.name}",italic:false}`;
+  const advancedNbt = [
+    options.advancedOptions?.description ? `description:"${options.advancedOptions.description}"` : undefined,
+    options.advancedOptions?.hideDescription !== undefined ? `hide_description:${options.advancedOptions.hideDescription}` : undefined,
+    options.advancedOptions?.immovable !== undefined ? `immovable:${options.advancedOptions.immovable}` : undefined,
+    options.advancedOptions?.invulnerable !== undefined ? `Invulnerable:${options.advancedOptions.invulnerable}` : undefined,
+    options.advancedOptions?.mainHand ? `main_hand:"${options.advancedOptions.mainHand}"` : undefined,
+    options.advancedOptions?.pose ? `pose:"${options.advancedOptions.pose}"` : undefined
+  ].filter(s => s).join(',')
+  const entityData = `profile:${outputNbtData.value},CustomName:{text:"${options.playerName}",italic:false}${advancedNbt ? ',' + advancedNbt : ''}`;
+
   outputSummonMannequin.value = `summon mannequin ~ ~ ~ {${entityData}}`
-  outputGiveMannequin.value = `give @p allay_spawn_egg[entity_data={id:"mannequin",${entityData}},custom_name={text:"${profile.name}模型",italic:false}]`
-  outputGiveHead.value = `give @p player_head[profile=${outputNbtData.value},custom_name={text:"${profile.name}的头",italic:false}]`
+  outputGiveMannequin.value = `give @p allay_spawn_egg[entity_data={id:"mannequin",${entityData}},custom_name={text:"${options.playerName}模型",italic:false}]`
+  outputGiveHead.value = `give @p player_head[profile=${outputNbtData.value},custom_name={text:"${options.playerName}的头",italic:false}]`
   console.log('Generated Profile:', profile)
 
   if (options.profileOrigin === 'pack') {
@@ -123,6 +176,7 @@ function handleSkinFileChange(event: Event) {
   } else {
     skinFile.value = null;
   }
+  skinFileName.value = skinFile.value?.name ?? 'null';
 }
 
 function handleCapeFileChange(event: Event) {
@@ -132,6 +186,17 @@ function handleCapeFileChange(event: Event) {
   } else {
     capeFile.value = null;
   }
+  capeFileName.value = capeFile.value?.name ?? 'null';
+}
+
+function handlePackIconFileChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files && target.files.length > 0) {
+    packIconFile.value = (target.files[0])!;
+  } else {
+    packIconFile.value = null;
+  }
+  packIconFileName.value = packIconFile.value?.name ?? 'null';
 }
 
 function handleWaitDialogCancel(event: Event) {
@@ -144,10 +209,16 @@ function handleWaitDialogCancel(event: Event) {
   <div id="contents">
     <h1>MC玩家模型生成工具</h1>
     <div id="app-info">
-      <label>v0.9</label>
-      <label>by 碗里巫云</label>
-      <a href="https://space.bilibili.com/1735847445" target="_blank">bilibili</a>
-      <a href="https://github.com/WizardsBowl/mc-mannequin-generator" target="_blank">GitHub</a>
+      <p>
+        v0.9
+      </p>
+      <p>
+        by 碗里巫云
+        &nbsp;
+        <a href="https://space.bilibili.com/1735847445" target="_blank">bilibili</a>
+        &nbsp;
+        <a href="https://github.com/WizardsBowl/mc-mannequin-generator" target="_blank">GitHub</a>
+      </p>
     </div>
     <p>一个 PWA 应用，帮助你在 MC 中生成具有特定皮肤的 玩家模型 / 玩家头颅。</p>
     <p class="warning-text">目前仅支持 Java 版。</p>
@@ -162,7 +233,7 @@ function handleWaitDialogCancel(event: Event) {
       </div>
       <div>
         <label>档案来源</label>
-        <div class="radio-button-box">
+        <div class="buttons-box">
           <p>
             <input type="radio" id="mode-realtime" value="Realtime" v-model="profileOrigin" />
             <label for="mode-realtime">实时更新</label>
@@ -183,7 +254,7 @@ function handleWaitDialogCancel(event: Event) {
       </div>
       <div v-if="profileOrigin === 'Url' || profileOrigin === 'Pack'">
         <label>模型种类</label>
-        <div class="radio-button-box">
+        <div class="buttons-box">
           <p>
             <input type="radio" id="model-wide" value="wide" v-model="modelType" />
             <label for="model-wide">粗手臂</label>
@@ -202,9 +273,69 @@ function handleWaitDialogCancel(event: Event) {
       </div>
       <div v-if="profileOrigin === 'Pack'">
         <label for="skin-file">皮肤文件</label>
+        <label for="skin-file" class="file-name-label">{{ skinFileName }}</label>
         <input type="file" id="skin-file" accept="image/png" @change="handleSkinFileChange" />
         <label for="cape-file">披风文件</label>
+        <label for="cape-file" class="file-name-label">{{ capeFileName }}</label>
         <input type="file" id="cape-file" accept="image/png" @change="handleCapeFileChange" />
+      </div>
+      <div>
+        <input type="checkbox" id="advanced-options" v-model="enabledAdvancedOptions" />
+        <label for="advanced-options">启用高级选项</label>
+        <div v-if="enabledAdvancedOptions" id="advanced-options-container">
+          <p class="warning-text">已启用高级选项</p>
+          <div class="buttons-box">
+            <p>
+              <label for="min-format">最小格式版本</label>
+              <input type="number" min="69" id="min-format" v-model.number="minFormat" />
+            </p>
+            <p>
+              <label for="max-format">最大格式版本</label>
+              <input type="number" min="69" id="max-format" v-model.number="maxFormat" />
+            </p>
+            <p>
+              <a href="https://zh.minecraft.wiki/w/资源包#资源包格式版本" target="_blank">查询版本号</a>
+            </p>
+          </div>
+          <label for="pack-icon-file">资源包图标文件</label>
+          <label for="pack-icon-file" class="file-name-label">{{ packIconFileName }}</label>
+          <input type="file" id="pack-icon-file" accept="image/png" @change="handlePackIconFileChange" />
+          <label for="description">模型标签文本</label>
+          <input type="text" id="description" v-model="description" />
+          <div class="buttons-box">
+            <p>
+              <input type="checkbox" id="hide-description" v-model="hideDescription" />
+              <label for="hide-description">隐藏模型标签</label>
+            </p>
+            <p>
+              <input type="checkbox" id="immovable" v-model="immovable" />
+              <label for="immovable">模型不可移动</label>
+            </p>
+            <p>
+              <input type="checkbox" id="invulnerable" v-model="invulnerable" />
+              <label for="invulnerable">模型无敌</label>
+            </p>
+          </div>
+          <div class="buttons-box">
+            <p>
+              <label for="main-hand">模型主手</label>
+              <select id="main-hand" v-model="mainHand">
+                <option value="right">右手</option>
+                <option value="left">左手</option>
+              </select>
+            </p>
+            <p>
+              <label for="pose">模型姿势</label>
+              <select id="pose" v-model="pose">
+                <option value="standing">站立</option>
+                <option value="crouching">潜行</option>
+                <option value="swimming">游泳</option>
+                <option value="fall_flying">滑翔</option>
+                <option value="sleeping">睡觉</option>
+              </select>
+            </p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -272,15 +403,14 @@ function handleWaitDialogCancel(event: Event) {
   max-width: 600px;
   padding: 8px;
   box-sizing: border-box;
-  font-size: 16px;
+  font-size: 1em;
   white-space: pre;
 }
 
 #app-info {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  flex-direction: row;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   margin-bottom: 16px;
@@ -294,17 +424,24 @@ function handleWaitDialogCancel(event: Event) {
   margin: 16px auto;
 }
 
-div.radio-button-box {
+#advanced-options-container {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+div.buttons-box {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   flex-direction: row;
   justify-content: center;
   align-items: center;
   margin-top: 5px;
 }
 
-div.radio-button-box p {
+div.buttons-box p {
   margin: 0;
 }
 
@@ -314,10 +451,24 @@ div.divider {
   border-bottom: 1px solid #ccc;
 }
 
+label.file-name-label {
+  display: block;
+  box-sizing: border-box;
+  margin: 5px auto;
+  width: 100%;
+  max-width: 400px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .warning-text {
   color: red;
   font-weight: bold;
-  font-size: 1em;
+  font-size: 1.2em;
 }
 
 .dialog-box {
@@ -335,13 +486,26 @@ input[type="text"] {
   padding: 8px;
   margin: 5px auto;
   box-sizing: border-box;
-  font-size: 16px;
+  font-size: 1em;
   display: block;
 }
 
 input[type="file"] {
-  display: block;
+  display: none;
   margin: 5px auto;
+  font-size: 1em;
+}
+
+input[type="number"] {
+  margin: 5px 0;
+  font-size: 1em;
+  width: 100px;
+}
+
+select {
+  margin: 5px 0;
+  font-size: 1em;
+  width: 80px;
 }
 
 textarea {
