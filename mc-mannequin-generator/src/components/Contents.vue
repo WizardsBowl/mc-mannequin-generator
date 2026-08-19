@@ -7,6 +7,7 @@ import { constructProfile } from '../utils/ProfileConstructor'
 import { objectToNbt } from '../utils/JsonToNbt'
 import { getAshconProfile, getProfileTextures } from '../utils/MojangAPI'
 import { generateResourcePack } from '../utils/ResourcePackGenerator'
+import { getApprunsCount, addApprunsCount } from '../utils/WzbAPI'
 
 const playerName = ref('Steve')
 const profileOrigin = ref('Realtime')
@@ -40,9 +41,11 @@ const packIconFileName = ref('未选择资源包图标文件')
 
 const errorDialogText = ref('')
 const waitDialogText = ref('')
+const appRunsCount = ref(0)
 
 onMounted(() => {
   console.log('Contents component mounted.')
+  tryGetApprunsCount()
 })
 
 async function generateMannequin() {
@@ -98,6 +101,7 @@ async function generateMannequin() {
     showWaitDialog('正在生成')
     const ashconProfile = options.profileOrigin === 'realtime' || options.profileOrigin === 'stored' ? await getAshconProfile(options.playerName) : undefined;
     await handleGenerating(options, ashconProfile);
+    tryAddApprunsCount()
   }
   catch (error) {
     console.error('Error generating profile:', error)
@@ -203,6 +207,23 @@ function handleWaitDialogCancel(event: Event) {
   event.preventDefault(); // Prevent the dialog from closing
   console.log('Wait dialog cancel event triggered, but closing is prevented.');
 }
+
+function tryGetApprunsCount() {
+  getApprunsCount('mc-mnqgrt').then(count => {
+    console.log(`Fetched runs count: ${count}`)
+    appRunsCount.value = count
+  }).catch(error => {
+    console.error('Failed to fetch app runs count:', error)
+  })
+}
+
+function tryAddApprunsCount() {
+  addApprunsCount('mc-mnqgrt').then(code => {
+    console.log(`Add runs count successfully with code ${code}`)
+  }).catch(error => {
+    console.error('Failed to add app runs count:', error)
+  })
+}
 </script>
 
 <template>
@@ -210,7 +231,7 @@ function handleWaitDialogCancel(event: Event) {
     <h1>MC玩家模型生成工具</h1>
     <div id="app-info">
       <p>
-        v0.9
+        v1.0.0.0 - 2026/08/20
       </p>
       <p>
         by 碗里巫云
@@ -363,6 +384,12 @@ function handleWaitDialogCancel(event: Event) {
       <textarea id="output-nbt-data" rows="2" readonly>{{ outputNbtData }}</textarea>
       <label for="output-textures-data">材质数据</label>
       <textarea id="output-textures-data" rows="12" readonly>{{ outputTexturesData }}</textarea>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <p>本程序已运行 {{ appRunsCount }} 次</p>
     </div>
   </div>
   <dialog id="error-dialog">
