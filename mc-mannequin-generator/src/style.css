@@ -74,6 +74,14 @@ button:focus-visible {
     color: #747bff;
   }
   button {
-    background-color: #f9f9f9;
+    background-color: #eee;
+  }
+}
+
+:root {
+  --border-color: #ccc;
+
+  @media(prefers-color-scheme: dark) {
+    --border-color: #555;
   }
 }

@@ -455,7 +455,7 @@ function tryAddApprunsCount() {
 #advanced-options-container {
   margin-top: 10px;
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
 }
 
@@ -476,7 +476,7 @@ div.buttons-box p {
 div.divider {
   margin: 20px 0;
   width: 100%;
-  border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid var(--border-color);
 }
 
 label.file-name-label {
@@ -486,7 +486,7 @@ label.file-name-label {
   width: 100%;
   max-width: 400px;
   padding: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -544,10 +544,6 @@ textarea {
 
 p {
   margin: 8px auto;
-}
-
-button {
-  background-color: #f0f0f0;
 }
 
 dialog {
