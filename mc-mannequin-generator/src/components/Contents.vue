@@ -231,7 +231,7 @@ function tryAddApprunsCount() {
     <h1>MC玩家模型生成工具</h1>
     <div id="app-info">
       <p>
-        v1.0.1 - 2026/08/24 - 
+        v1.0.2 - 2026/08/26 - 
         <a href="https://blog.wizardsbowl.com/minecraft/software/mc-mnqgrt" target="_blank">使用文档</a>
       </p>
       <p>
